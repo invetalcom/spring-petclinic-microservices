@@ -1,10 +1,22 @@
 version: '2'
 
 services:
+
+  mysql-db:
+    image: mysql:5.7.8
+    container_name: mysql-db
+    environment:
+     - MYSQL_ROOT_PASSWORD=petclinic
+     - MYSQL_DATABASE=petclinic
+    ports:
+     - 3306:3306
+
   config-server:
     image: springcommunity/spring-petclinic-config-server
     container_name: config-server
     mem_limit: 512M
+    environment:
+     - SPRING_CLOUD_CONFIG_SERVER_GIT=https://github.com/invetalcom/spring-petclinic-microservices-config
     ports:
      - 8888:8888
 
@@ -17,12 +29,16 @@ services:
     entrypoint: ["./dockerize","-wait=tcp://config-server:8888","-timeout=60s","--","java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
     ports:
      - 8761:8761
-
+     
   customers-service:
     image: springcommunity/spring-petclinic-customers-service
     container_name: customers-service
     mem_limit: 512M
+    environment:
+    - SPRING_PROFILES_ACTIVE=docker,mysql
+    - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/petclinic?useSSL=false
     depends_on:
+     - mysql-db
      - config-server
      - discovery-server
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
@@ -33,7 +49,11 @@ services:
     image: springcommunity/spring-petclinic-visits-service
     container_name: visits-service
     mem_limit: 512M
+    environment:
+    - SPRING_PROFILES_ACTIVE=docker,mysql
+    - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/petclinic?useSSL=false
     depends_on:
+     - mysql-db
      - config-server
      - discovery-server
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
@@ -44,13 +64,17 @@ services:
     image: springcommunity/spring-petclinic-vets-service
     container_name: vets-service
     mem_limit: 512M
+    environment:
+    - SPRING_PROFILES_ACTIVE=docker,mysql
+    - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/petclinic?useSSL=false
     depends_on:
+     - mysql-db
      - config-server
      - discovery-server
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
     ports:
      - 8083:8083
-
+     
   api-gateway:
     image: springcommunity/spring-petclinic-api-gateway
     container_name: api-gateway
